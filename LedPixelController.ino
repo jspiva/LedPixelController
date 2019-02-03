@@ -1,74 +1,94 @@
+/*-------------------------------------------------------------------------
+LedPixelController for Esp8266
+Written by Jason M Spiva.
+-------------------------------------------------------------------------
+This file is part of the jkspiva/LedPixelController library.
+LedPixelController is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as
+published by the Free Software Foundation, either version 3 of
+the License, or (at your option) any later version.
+LedPixelController is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+You should have received a copy of the GNU Lesser General Public
+License.  If not, see <http://www.gnu.org/licenses/>.
+-------------------------------------------------------------------------*/
+
 // Includes
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include "PixelBuffer.h"
 #include "PixelWriterAsync.h"
-#include "e131.h"
+#include "E131.h"
 #include <ArduinoOTA.h>
+#include <DNSServer.h>            //Local DNS Server used for redirecting all requests to the configuration portal
+#include <ESP8266WebServer.h>     //Local WebServer used to serve the configuration portal
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
 // #define DEBUG // turn on debugging
 
 // Allow analog voltage to be read
 ADC_MODE(ADC_VCC);
 
-// Constants
+// Variable/Constant Definitions
 
-// E131 Packet Parser
-E131 e131;
-
-// Networking
-const char* ssid     = "...";           // Replace with WiFi SSID
-const char* password = "...";           // Replace with WiFi Password
-const char* domain = "esp8266.local";   // Replace with local domain name
-char name[11] = "LED_xxxxxx";
-
-// State Machine
-const uint8_t STATE_STARTING = 0X00;
-const uint8_t STATE_CONNECTING = 0X01;
-const uint8_t STATE_WAITING = 0X02;
-const uint8_t STATE_PROCESSING = 0X03;
-const uint8_t STATE_REFRESHING = 0X04;
-uint8_t state = STATE_STARTING;
-
-// Settings
-const bool LED_ON = LOW;
-const bool LED_OFF = HIGH;
-
-const uint8_t UNIVERSE_MAXCOUNT = 255;
-const uint8_t CHANNEL_COUNT = 8;
-const uint8_t PIXEL_SIZE = 3;
-const uint8_t PIXEL_COUNT = 150;
-const uint8_t PINS[CHANNEL_COUNT] = {D0, D1, D2, D3, D5, D6, D7, D8};
-uint8_t universeToBuffer[UNIVERSE_MAXCOUNT];
-
-// Colors (RGB)
-uint8_t RED[PIXEL_SIZE]= {0x20, 0x00, 0x00};
-uint8_t ORANGE[PIXEL_SIZE]= {0x20, 0x10, 0x00};
-uint8_t YELLOW[PIXEL_SIZE]= {0x20, 0x20, 0x00};
-uint8_t GREEN[PIXEL_SIZE]= {0x00, 0x20, 0x00};
-uint8_t CYAN[PIXEL_SIZE]= {0x00, 0x20, 0x20};
-uint8_t BLUE[PIXEL_SIZE]= {0x00, 0x00, 0x20};
-uint8_t PURPLE[PIXEL_SIZE]= {0x20, 0x00, 0x20};
-uint8_t BLACK[PIXEL_SIZE]= {0x00, 0x00, 0x00};
-uint8_t WHITE[PIXEL_SIZE]= {0x20, 0x20, 0x20};
-
-// Create the pixel Writer
-PixelWriterAsync pixelWriter(PIXEL_COUNT, PIXEL_SIZE, PINS, CHANNEL_COUNT);
-
-// Declare some variables
-PixelBuffer buffers[CHANNEL_COUNT + 1]{
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, PINS, CHANNEL_COUNT},
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[0], 1},
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[1], 1},
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[2], 1},
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[3], 1},
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[4], 1},
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[5], 1},
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[6], 1},
-  {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[7], 1}
-};
-
-bool wifiDisconnected = false;
+    // E131 Packet Parser
+    E131 e131;
+    
+    // Networking
+    const char* ssid     = "...";           // Replace with WiFi SSID
+    const char* password = "...";           // Replace with WiFi Password
+    const char* domain = "esp8266.local";   // Replace with local domain name
+    char name[11] = "LED_xxxxxx";
+    
+    // State Machine
+    const uint8_t STATE_STARTING = 0X00;
+    const uint8_t STATE_CONNECTING = 0X01;
+    const uint8_t STATE_WAITING = 0X02;
+    const uint8_t STATE_PROCESSING = 0X03;
+    const uint8_t STATE_REFRESHING = 0X04;
+    uint8_t state = STATE_STARTING;
+    
+    // Settings
+    const bool LED_ON = LOW;
+    const bool LED_OFF = HIGH;
+    
+    const uint8_t UNIVERSE_MAXCOUNT = 255;
+    const uint8_t CHANNEL_COUNT = 8;
+    const uint8_t PIXEL_SIZE = 3;
+    const uint8_t PIXEL_COUNT = 150;
+    const uint8_t PINS[CHANNEL_COUNT] = {D0, D1, D2, D3, D5, D6, D7, D8};
+    uint8_t universeToBuffer[UNIVERSE_MAXCOUNT];
+    
+    // Colors (RGB)
+    const uint8_t RED[PIXEL_SIZE]= {0x20, 0x00, 0x00};
+    const uint8_t ORANGE[PIXEL_SIZE]= {0x20, 0x10, 0x00};
+    const uint8_t YELLOW[PIXEL_SIZE]= {0x20, 0x20, 0x00};
+    const uint8_t GREEN[PIXEL_SIZE]= {0x00, 0x20, 0x00};
+    const uint8_t CYAN[PIXEL_SIZE]= {0x00, 0x20, 0x20};
+    const uint8_t BLUE[PIXEL_SIZE]= {0x00, 0x00, 0x20};
+    const uint8_t PURPLE[PIXEL_SIZE]= {0x20, 0x00, 0x20};
+    const uint8_t BLACK[PIXEL_SIZE]= {0x00, 0x00, 0x00};
+    const uint8_t WHITE[PIXEL_SIZE]= {0x20, 0x20, 0x20};
+    
+    // Create the pixel Writer
+    PixelWriterAsync pixelWriter(PIXEL_COUNT, PIXEL_SIZE, PINS, CHANNEL_COUNT);
+    
+    // Declare some variables
+    PixelBuffer buffers[CHANNEL_COUNT + 1]{
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, PINS, CHANNEL_COUNT},
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[0], 1},
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[1], 1},
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[2], 1},
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[3], 1},
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[4], 1},
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[5], 1},
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[6], 1},
+      {&pixelWriter, PIXEL_SIZE, PIXEL_COUNT, &PINS[7], 1}
+    };
+    
+    bool wifiDisconnected = false;
 
 void setup() {
 

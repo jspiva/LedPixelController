@@ -128,7 +128,7 @@ class E131 {
  public:
     uint8_t       *data;                /* Pointer to DMX channel data */
     uint16_t      universe;             /* DMX Universe of last valid packet */
-    e131_packet_t packet;   /* Packet buffer */
+    e131_packet_t packet;               /* Packet buffer */
     e131_stats_t  stats;                /* Statistics tracker */
 
     E131();
