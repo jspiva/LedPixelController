@@ -1,7 +1,7 @@
 # LedPixelController
 Unicast E1.31 to WS2811/WS2812 WiFi controller, output up to 1360 pixels (8 ports/universes, 170 pixels per port, 4080 channels)
 
-The LedPixelController accepts 1 unicast broadcast universe, and up to 8 unicast universes.  The controller maintains a buffer for each.  An asynchrounous pixel driver utilizing the UART TXD1 port allows writing a universe of data while the E1.31 listens for the next data packets.
+The LedPixelController accepts 1 unicast broadcast universe, and up to 8 unicast universes.  The controller then multiplexes the data from the UART TXD1 port using an asynchrounous pixel driver that allows writing a universe of data while the E1.31 listens for the next data packets.
 
 ### Important Settings
   - *ssid* The name of the WiFi SSID network to connect to.  (WiFi Manager is on my todo list) 
