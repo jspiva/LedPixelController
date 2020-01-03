@@ -29,6 +29,9 @@ The table below shows the outputs from the ESP8266 based on the universe input, 
 
 Connecting the ESP8266 to a pair of quadruple bus buffer gates like the [SN74HCT125N](https://www.newark.com/texas-instruments/sn74hct125n/non-inverting-buffer-dip-14/dp/68K1116?gclid=CjwKCAiAs8XiBRAGEiwAFyQ-ejVimsQAh_VLQYTXX-evTnmK4LatxY-gy9NNws8_nsnzISHsaOfKQhoCf4AQAvD_BwE&mckv=sYk7cQyMS_dc|pcrid|219870296115|plid||kword|sn74hct125n|matc) allows for enabling and disabling of a high speed data line for up to four channels.  For each channel of the buffer gates connect the D4/TX1 data line to the input A, then for each channel connect a corresponding ESP output (D0, D1, D2, D3, D5, D6, D7, D8) to the inverted enable /OE.  Finally, the output should be connected to both the pixel strand, and to ground through a fairly large resistance.  The resistance is necessary, as when the buffer chip channel is disabled it floats, and must be held at ground so the pixels can latch the proper data.
 
+### Hackster.io
+ESP8266 E1.31 Multiplexing Pixel Controller [project write-up](https://www.hackster.io/jasonspiva/esp8266-e1-31-multiplexing-pixel-controller-002072).
+
 ### Credits
 Thanks to the code of others that made this possible...
  - [forkineye/E1.31](https://github.com/forkineye/E131)
